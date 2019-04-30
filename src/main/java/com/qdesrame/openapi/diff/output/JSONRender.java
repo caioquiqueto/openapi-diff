@@ -2,18 +2,26 @@ package com.qdesrame.openapi.diff.output;
 
 import com.qdesrame.openapi.diff.model.*;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.media.Schema;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+//import javax.xml.validation.Schema;
 
 public class JSONRender implements Render {
 
     @Override
     public String render(ChangedOpenApi diff) {
+        return render(diff,false);
+    }
+
+    public String render(ChangedOpenApi diff, boolean hasConsoleRender) {
 
         JSONObject jsonRender = new JSONObject();
 
@@ -50,6 +58,11 @@ public class JSONRender implements Render {
             jsonRender.put("deleted", missingRender);
             jsonRender.put("changed", changedRender);
             jsonRender.put("isBackwardCompatible",diff.isCompatible());
+
+            if(hasConsoleRender){
+                ConsoleRender consoleRender = new ConsoleRender();
+                jsonRender.put("consoleRender",consoleRender.render(diff));
+            }
 
         }
 
@@ -146,6 +159,7 @@ public class JSONRender implements Render {
 
         JSONReturn.put("contentType",contentType);
         JSONReturn.put("IsBackwardCompatible",changedMediaType.isCompatible());
+        JSONReturn.put("schema",list_Schema(changedMediaType.getSchema()));
 
         return JSONReturn;
     }
@@ -177,7 +191,7 @@ public class JSONRender implements Render {
         jsonReturn.put("added",addResponsesJSON);
         jsonReturn.put("deleted",deleteResponsesJSON);
         jsonReturn.put("changed",changedResponsesJSON);
-        jsonReturn.put("isBackwardCompatiple",changedApiResponse.isCompatible());
+        jsonReturn.put("isBackwardCompatible",changedApiResponse.isCompatible());
 
         return jsonReturn;
     }
@@ -189,4 +203,68 @@ public class JSONRender implements Render {
         jsonReturn.put("mediaType", list_content(response.getContent()));
         return jsonReturn;
     }
+
+    private JSONObject list_Schema(ChangedSchema changedSchema){
+
+        if(changedSchema == null)
+            return null;
+
+        Map<String, Schema> addProperties = changedSchema.getIncreasedProperties();
+        Map<String, Schema> deleteProperties= changedSchema.getMissingProperties();
+        Map<String, ChangedSchema> changedProperties = changedSchema.getChangedProperties();
+
+
+        JSONArray addPropertiesJSON = new JSONArray();
+        JSONArray deletePropertiesJSON = new JSONArray();
+        JSONArray changedPropertiesJSON = new JSONArray();
+
+
+
+        for (String propName : addProperties.keySet()) {
+            addPropertiesJSON.put(propName);
+        }
+        for (String propName : deleteProperties.keySet()) {
+            deletePropertiesJSON.put(propName);
+        }
+        for (String propName : changedProperties.keySet()) {
+            changedPropertiesJSON.put(itemChangedProperty( propName, changedProperties.get(propName)));
+        }
+
+        JSONObject jsonReturn = new JSONObject();
+
+        jsonReturn.put("added",addPropertiesJSON);
+        jsonReturn.put("deleted",deletePropertiesJSON);
+        jsonReturn.put("changed",changedPropertiesJSON);
+        jsonReturn.put("isBackwardCompatible",changedSchema.isCompatible());
+
+        return jsonReturn;
+    }
+
+    private JSONObject itemChangedProperty(
+            String propertyName, ChangedSchema changedProperty){
+
+        JSONObject jsonReturn = new JSONObject();
+
+        jsonReturn.put("property",propertyName);
+        jsonReturn.put("type",changedProperty.getType());
+        if(changedProperty.getDescription() != null)
+            jsonReturn.put("description",changedProperty.getDescription().getRight());
+        if(changedProperty.getRequired() != null)
+            jsonReturn.put("isChangeRequired", changedProperty.getRequired().isItemsChanged().isUnchanged());
+        if(changedProperty.getEnumeration() != null)
+        jsonReturn.put("enumeration",changedProperty.getEnumeration().getNewValue());
+
+        jsonReturn.put("isBackwardCompatible",changedProperty.isCompatible());
+
+        if(changedProperty.getType() == "array") {
+            jsonReturn.put("properties", list_Schema(changedProperty.getItems()));
+        }else{
+            if(!(changedProperty.getIncreasedProperties().isEmpty() &&
+                    changedProperty.getMissingProperties().isEmpty() &&
+                    changedProperty.getChangedProperties().isEmpty()))
+                jsonReturn.put("properties", list_Schema(changedProperty));
+        }
+        return jsonReturn;
+    }
 }
+

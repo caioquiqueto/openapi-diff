@@ -146,7 +146,7 @@ public class Main {
       }
 
       JSONRender jsonRender = new JSONRender();
-      System.out.println(jsonRender.render(result));
+      System.out.println(jsonRender.render(result,true));
 
       HtmlRender htmlRender = new HtmlRender();
       MarkdownRender mdRender = new MarkdownRender();
