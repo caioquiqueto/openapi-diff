@@ -24,10 +24,10 @@ public class JSONRender implements Render {
     public String render(ChangedOpenApi diff, boolean hasConsoleRender) {
 
         JSONObject jsonRender = new JSONObject();
-
         if (diff.isUnchanged())
         {
-            jsonRender.put("Results", "Dont have any changes");
+        	jsonRender.put("hadChanges", false);
+        	jsonRender.put("isBackwardCompatible",true);
         }
         else
         {
@@ -54,6 +54,7 @@ public class JSONRender implements Render {
                 changedRender.put(operationRender);
             });
 
+            jsonRender.put("hadChanges", true);
             jsonRender.put("added", newRender);
             jsonRender.put("deleted", missingRender);
             jsonRender.put("changed", changedRender);
